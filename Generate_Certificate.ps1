@@ -86,7 +86,7 @@ if( test-path $Folder\$CSRFile ){
 		if( test-path $Folder\$PFXFile ){ 
 			Write-OutPut $PFXFile "generated successfully" >> .\Certificate_output.log
 			$EmailSubject = "Request #" + $RequestId + ": Certificate(s) from eHS to Be Installed for [*" + $CN + "*] on" + $CAServer
-			Send-MailMessage -SmtpServer relay-partner.ehealthsask.ca -To $Email -From SecurityAssistantBot@ehealthsask.ca -Subject $EmailSubject -Body $PASSWORD -Attachments $Folder\$PFXFile
+			Send-MailMessage -SmtpServer ExchangeServer -To $Email -From WebExBot@company.com -Subject $EmailSubject -Body $PASSWORD -Attachments $Folder\$PFXFile
 		}else{ Write-OutPut "Didn't generate the PFX File successfully" >> .\Certificate_output.log }
 	}else{ Write-OutPut "Didn't generate the Certificate successfully" >> .\Certificate_output.log }
 }else{ Write-OutPut "Didn't generate the CSR File successfully" >> .\Certificate_output.log }
