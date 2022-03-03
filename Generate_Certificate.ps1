@@ -61,7 +61,7 @@ if( test-path $Folder\$CSRFile ){
 	if ($ENVIRONMENT -eq 'PROD' -and $CertificateTemplate -eq 'ExternalClientAuth4yearOffline'){
 		$CAServer = ""
 	}
-	elseif($ENVIRONMENT -eq 'PROD' -and ($CertificateTemplate -eq 'DrugPlan2.0' -or $CertificateTemplate -eq 'SLRR')){
+	elseif($ENVIRONMENT -eq 'PROD' -and ($CertificateTemplate -eq 'Client1' -or $CertificateTemplate -eq 'Client2')){
 		$CAServer = ""
 	}
 	elseif($ENVIRONMENT -eq 'UAT'){
