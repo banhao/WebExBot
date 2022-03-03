@@ -5,3 +5,5 @@ In this POC, I just built 3 modules:
 -  Release Emails - you can release Encrypted Email from quarantine from the Cisco SMA.
 -  Certificates - you can generate client certificates from your enterprise CA server and use a random password to encrypt it as an PFX file and send it by email.  
 <img src="/screenshot.jpg">
+
+## Notice: All the custom settings were removed from the code, you need add them by yourself, such as WebEx Bot access token, SMA API URL/ssh configuration username/password bearer token, Qualys username/password, Client Certificate template name, Enterprise CA Server, Exchange Server Setting
