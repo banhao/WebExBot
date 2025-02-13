@@ -18,8 +18,9 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 from dotenv import load_dotenv
 
 import tempfile
+import shutil
 import zipfile
-import datetime
+import glob
 
 urllib3.disable_warnings()
 
@@ -35,8 +36,8 @@ activationKey=os.getenv("activationKey")
 bearer=os.getenv("bearer")
 sma_server=os.getenv("sma_server")
 sma_token=os.getenv("sma_token")
-sma_uname=os.getenv("sma_uname")
 sma_server_api=os.getenv("sma_server_api")
+sma_uname=os.getenv("sma_uname")
 
 
 headers = {
@@ -374,7 +375,7 @@ def vuln_list(HostID,AssetID,RoomID,HOSTNAME, webhook):
             csvfile = open(path_filename, 'w', newline='', encoding="utf-8")
             csvfile_writer = csv.writer(csvfile)
             # ADD THE HEADER TO CSV FILE
-            csvfile_writer.writerow(["SEVERITY", "ASSET IP", "TITLE", "FIRST DETECTED", "STATUS", "QID", "CVSSv3 Base (nvd)", "TYPE DETECTED", "CVE", "SOLUTION", "CVE-Description", "ASSET ID", "LAST DETECTED", "ASSET NAME", "RESULTS"])
+            csvfile_writer.writerow(['SEVERITY", "ASSET IP", "TITLE", "FIRST DETECTED", "STATUS", "QID", "CVSSv3 Base (nvd)", "TYPE DETECTED", "CVE", "SOLUTION", "CVE-Description", "ASSET ID", "LAST DETECTED", "ASSET NAME", "RESULTS'])
             try:
                 ASSET_IP = root[0][1][0].findall('IP')[0].text
             except IndexError:
@@ -588,11 +589,11 @@ def teams_webhook():
             if result['inputs']['id'] == "ClientCertificates":
                 client_certificates(result, webhook)
             if result['inputs']['id'] == "SingleOrBatch":
-                if result["inputs"]["Batch"] == "True":
+                if result['inputs']['Batch'] == "True":
                     file_path = "./Client_Certificate_Information_Template.csv"
                     if os.path.exists(file_path):
                         with open(file_path, "rb") as file:
-                            send_put("https://webexapis.com/v1/messages/" + result["messageId"],
+                            send_put("https://webexapis.com/v1/messages/" + result['messageId'],
                                     {
                                         "roomId": webhook['data']['roomId'], 
                                         "attachments":[
@@ -620,7 +621,7 @@ def teams_webhook():
                                         "markdown": "Client Certificates"
                                     }
                             )
-                            parent_id = send_get("https://webexapis.com/v1/messages/" + result["messageId"])["parentId"]
+                            parent_id = send_get("https://webexapis.com/v1/messages/" + result['messageId'])['parentId']
                             data = MultipartEncoder({'roomId': webhook['data']['roomId'], "parentId": parent_id, "files": (file_path, file, 'text/csv')})
                             requests.post("https://webexapis.com/v1/messages/", data=data, headers = {"Authorization": "Bearer " + bearer, 'Content-Type': data.content_type})
                             send_post("https://webexapis.com/v1/messages/",
@@ -643,7 +644,7 @@ def teams_webhook():
                                                             {
                                                                 "type": "TextBlock",
                                                                 "weight": "Bolder",
-                                                                "text": "CertificateTemplate HAS ONLY 3 VALID OPTIONS:\r1. SLRR\r2. DrugPlan2.0\r3. ClientAuthenticationCNET-privatekeyexportable",
+                                                                "text": "CertificateTemplate HAS ONLY 2 VALID OPTIONS:\r1. SLRR\r2. DrugPlan2.0",
                                                                 "wrap": True
                                                             },
                                                             {
@@ -665,7 +666,7 @@ def teams_webhook():
                                     }
                             )
                 else:
-                    send_put("https://webexapis.com/v1/messages/" + result["messageId"],
+                    send_put("https://webexapis.com/v1/messages/" + result['messageId'],
                             {
                                 "roomId": webhook['data']['roomId'], 
                                 "attachments": [
@@ -1157,51 +1158,85 @@ def teams_webhook():
                         #print(datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " | " + requester + " | request \"client certificates\" menu.", file=open("Certificate_output.log", "a"))
                     else:
                         msg = "Sorry, you (" + webhook['data']['personEmail'] + ") are NOT allowed to use this module. Please contact Hao.Ban@eHealthsask.ca for help."
-                elif "data" in webhook.keys() and "files" in webhook["data"].keys() and "parentId" in webhook["data"].keys():
-                    parent_msg = send_get("https://webexapis.com/v1/messages/" + webhook["data"]["parentId"])
-                    if parent_msg["text"].lower() == "client certificates":
-                        child_msg = send_get("https://webexapis.com/v1/messages?roomId={0}&parentId={1}".format(webhook["data"]["roomId"], webhook["data"]["parentId"]))["items"]
-                        if len(child_msg) <= 15:
+                elif "data" in webhook.keys() and "files" in webhook['data'].keys() and "parentId" in webhook['data'].keys():
+                    parent_msg = send_get("https://webexapis.com/v1/messages/" + webhook['data']['parentId'])
+                    if parent_msg['text'].lower() == "client certificates":
+                        child_msg = send_get("https://webexapis.com/v1/messages?roomId={0}&parentId={1}".format(webhook['data']['roomId'], webhook['data']['parentId']))['items']
+                        if len(child_msg) <= 50:
                             for m in child_msg:
-                                if m["personEmail"] == bot_email and "markdown" in m.keys() and m["markdown"] == "Batch Client Certificates":
-                                    file_type = requests.head(webhook["data"]["files"][0], headers={"Authorization": "Bearer " + bearer}).headers["Content-Type"]
+                                if m['personEmail'] == bot_email and "markdown" in m.keys() and m['markdown'] == "Batch Client Certificates":
+                                    file_type = requests.head(webhook['data']['files'][0], headers={"Authorization": "Bearer " + bearer}).headers['Content-Type']
                                     if file_type == "text/csv":
-                                        current_datetime = datetime.datetime.now()
-                                        filename = f"{webhook["data"]["personEmail"]}_{current_datetime.year:04}{current_datetime.month:02}{current_datetime.day:02}_{current_datetime.hour:02}{current_datetime.minute}"
-                                        #print(filename)
-                                        #time.sleep(10000)
-                                        file_content = send_get(webhook["data"]["files"][0], js = False).content
+                                        current_datetime = datetime.now()
+                                        filename = f"{webhook['data']['personEmail']}_{current_datetime.year:04}{current_datetime.month:02}{current_datetime.day:02}_{current_datetime.hour:02}{current_datetime.minute}"
+                                        file_content = send_get(webhook['data']['files'][0], js = False).content
                                         tmp = tempfile.NamedTemporaryFile(suffix = ".csv", dir = ".", delete = False)
                                         with open(tmp.name, "wb") as t:
                                             t.write(file_content)
-                                        test = subprocess.Popen(['powershell.exe', './AutoGenerate_Client_CertificateTEST.ps1', tmp.name, filename])
-                                        test.communicate()
-                                        tmp.close()
+                                        batch_cert_request = subprocess.run(['powershell.exe', './AutoGenerate_Client_Certificate.ps1', tmp.name, filename])
+                                        #time.sleep(50000)
 
-                                        time.sleep(5)
+                                        tmp.close()
                                         os.remove(tmp.name)
+                                        if batch_cert_request.returncode == 4444:
+                                            send_post("https://webexapis.com/v1/messages/",
+                                                    {
+                                                        "roomId": webhook['data']['roomId'],
+                                                        "parentId": webhook['data']['parentId'],
+                                                        "attachments":[
+                                                                    {
+                                                                        "contentType": "application/vnd.microsoft.card.adaptive",
+                                                                        "content": {
+                                                                            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                                                                            "type": "AdaptiveCard",
+                                                                            "version": "1.2",
+                                                                            "body": [
+                                                                            {
+                                                                                "type": "TextBlock",
+                                                                                "wrap": True,
+                                                                                "color": "attention",
+                                                                                "text": f"ERROR: There was an error processing one or more of your certificate requests. Please try again for these entries."
+                                                                            },]
+                                                                        }
+                                                                }
+                                                        ],
+                                                        "markdown": "Batch Client Certificates Error"
+                                                    }
+                                            )
 
                                         zip_name = filename + ".zip"
                                         with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                                            #print(list(os.walk(f"BatchClientCertificate\\{filename}")))
                                             for root, directory, files in os.walk(f"BatchClientCertificate\\{filename}"):
                                                 for file in files:
                                                     arc_name = root[root.find("\\") + 1:]
                                                     zip_file.write(os.path.join(root, file), os.path.join(arc_name, file))
-                                        time.sleep(5)
-                                        with open(zip_name, "rb") as file:
-                                                data = MultipartEncoder({'roomId': webhook['data']['roomId'], "parentId": webhook["data"]["parentId"], "files": (zip_name, file)})
-                                                res = requests.post("https://webexapis.com/v1/messages/", data=data, headers = {"Authorization": "Bearer " + bearer, 'Content-Type': data.content_type})
 
-                                        time.sleep(5)    
-                                        os.remove(zip_name)
+                                        
+                                        with open(zip_name, "rb") as file:
+                                            data = MultipartEncoder({'roomId': webhook['data']['roomId'], "parentId": webhook['data']['parentId'], "files": (zip_name, file)})
+                                            res = requests.post("https://webexapis.com/v1/messages/", data=data, headers = {"Authorization": "Bearer " + bearer, 'Content-Type': data.content_type})
+
+                                        os.remove(zip_name)                                        
+                                        # removing files with .cer or .rsp extension
+                                        current_dir = "."
+
+                                        pattern = os.path.join(current_dir, "*.cer")
+                                        files = glob.glob(pattern)
+                                        for file in files:
+                                            os.remove(file)
+                                        
+                                        pattern = os.path.join(current_dir, "*.rsp")
+                                        files = glob.glob(pattern)
+                                        for file in files:
+                                            os.remove(file)
+
                                     else:
                                         not_csv_msg = "Sorry, but I only accept CSV messages."
-                                        send_post("https://webexapis.com/v1/messages/", {"roomId": webhook['data']['roomId'], "parentId": webhook["data"]["parentId"], "markdown": not_csv_msg})
+                                        send_post("https://webexapis.com/v1/messages/", {"roomId": webhook['data']['roomId'], "parentId": webhook['data']['parentId'], "markdown": not_csv_msg})
 
                         else:
-                            gt15_msg = "Sorry, but I will not process threads with more than 15 messages. Please make another client certificate request."
-                            send_post("https://webexapis.com/v1/messages/", {"roomId": webhook['data']['roomId'], "parentId": webhook["data"]["parentId"], "markdown": gt15_msg})
+                            gt15_msg = "Sorry, but I will not process threads with more than 50 messages. Please make another client certificate request."
+                            send_post("https://webexapis.com/v1/messages/", {"roomId": webhook['data']['roomId'], "parentId": webhook['data']['parentId'], "markdown": gt15_msg})
                         
                 else:
                     msg = "Sorry, but I did not understand your request. Type `Help` to see what I can do"
